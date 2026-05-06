@@ -21,7 +21,7 @@ export default async function ChatPage() {
   return (
     <div className="flex h-screen w-full bg-white dark:bg-black overflow-hidden">
       {/* Sidebar - Danh sách đoạn chat */}
-      <Sidebar />
+      <Sidebar currentUser={user} profile={profile} />
 
       {/* Main Chat Window - Nội dung hội thoại */}
       <ChatWindow currentUser={user} profile={profile} />
