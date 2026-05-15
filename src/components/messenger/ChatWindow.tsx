@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect } from 'react'
-import { Phone, Video, Info } from 'lucide-react'
+import { Phone, Video, Info, ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage } from '@/components/ui/avatar'
 import { useChatStore } from '@/store/useChatStore'
@@ -56,9 +56,11 @@ export default function ChatWindow({ currentUser, profile }: { currentUser: any,
           .single();
         
         if (profileData) {
+          const fallbackName = profileData.email ? profileData.email.split('@')[0] : 'Người dùng Messenger';
+          const displayName = profileData.full_name || fallbackName;
           setActiveConvData({
-            name: profileData.full_name,
-            avatar: profileData.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profileData.full_name}`,
+            name: displayName,
+            avatar: profileData.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${displayName}`,
             id: profileData.id,
             isNew: true
           });
@@ -81,7 +83,8 @@ export default function ChatWindow({ currentUser, profile }: { currentUser: any,
           if (!data.is_group) {
             const other = data.participants?.find((p: any) => p.user?.id !== currentUser.id)
             if (other?.user) {
-              name = other.user.full_name || name
+              const fallbackName = other.user.email ? other.user.email.split('@')[0] : 'Người dùng Messenger';
+              name = other.user.full_name || fallbackName
               avatar = other.user.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`
             }
           }
@@ -119,7 +122,7 @@ export default function ChatWindow({ currentUser, profile }: { currentUser: any,
 
   if (!activeConversationId) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-white dark:bg-black text-gray-400">
+      <div className="hidden md:flex flex-1 items-center justify-center bg-white dark:bg-black text-gray-400">
         Chọn một cuộc hội thoại để bắt đầu
       </div>
     )
@@ -133,6 +136,14 @@ export default function ChatWindow({ currentUser, profile }: { currentUser: any,
       {/* Header */}
       <header className="h-[72px] flex items-center justify-between px-6 z-10 bg-white/90 dark:bg-black/90 backdrop-blur-xl border-b border-gray-50 dark:border-gray-900">
         <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="md:hidden -ml-2 mr-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full shrink-0"
+            onClick={() => setActiveConversationId(null)}
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </Button>
           <div className="relative">
             <Avatar className="w-11 h-11 ring-2 ring-transparent">
                <AvatarImage src={activeConvData?.avatar} alt="Avatar" />
@@ -183,7 +194,12 @@ export default function ChatWindow({ currentUser, profile }: { currentUser: any,
 
         <div className="flex-1 overflow-hidden relative">
           {!activeConvData?.isNew ? (
-            <MessageList currentUser={currentUser} activeConversationId={activeConversationId} />
+            <MessageList 
+              currentUser={currentUser} 
+              activeConversationId={activeConversationId}
+              otherUserAvatar={activeConvData?.avatar}
+              otherUserName={activeConvData?.name}
+            />
           ) : (
             <div className="h-full flex flex-col items-center justify-center p-10 text-center">
               <p className="text-gray-400 text-sm italic mb-2">Bắt đầu vẫy tay chào {activeConvData?.name}!</p>

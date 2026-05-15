@@ -11,6 +11,7 @@ interface ChatStore {
   messages: ExtendedMessage[];
   activeConversationId: string | null;
   typingUsers: string[];
+  replyingToMessage: ExtendedMessage | null;
 
   // Actions
   setActiveConversationId: (id: string | null) => void;
@@ -33,18 +34,21 @@ interface ChatStore {
   addTypingUser: (userId: string) => void;
   removeTypingUser: (userId: string) => void;
   clearMessages: () => void;
+  setReplyingToMessage: (message: ExtendedMessage | null) => void;
 }
 
 export const useChatStore = create<ChatStore>((set) => ({
   messages: [],
   activeConversationId: null,
   typingUsers: [],
+  replyingToMessage: null,
 
   setActiveConversationId: (id) => set({ activeConversationId: id }),
 
   setMessages: (messages) => set({ messages: messages.map(m => ({ ...m, status: 'sent' })) }),
 
   addMessage: (message) => set((state) => {
+    // Nếu đã tồn tại message với cùng ID → merge (tránh duplicate từ realtime)
     const exists = state.messages.some(m => m.id === message.id);
     if (exists) {
       return {
@@ -56,11 +60,25 @@ export const useChatStore = create<ChatStore>((set) => ({
     };
   }),
 
-  updateMessage: (messageId, updates) => set((state) => ({
-    messages: state.messages.map((m) => 
-      m.id === messageId ? { ...m, ...updates } : m
-    ),
-  })),
+  updateMessage: (messageId, updates) => set((state) => {
+    const newId = (updates as any).id;
+    // Nếu update chứa id mới (real ID thay thế temp ID):
+    // - Xóa bất kỳ entry nào đã có real ID đó (do realtime INSERT đến trước)
+    // - Cập nhật entry temp thành real
+    if (newId && newId !== messageId) {
+      const withoutDuplicate = state.messages.filter(m => m.id !== newId);
+      return {
+        messages: withoutDuplicate.map(m =>
+          m.id === messageId ? { ...m, ...updates } : m
+        ),
+      };
+    }
+    return {
+      messages: state.messages.map(m =>
+        m.id === messageId ? { ...m, ...updates } : m
+      ),
+    };
+  }),
 
   setTypingUsers: (userIds) => set({ typingUsers: userIds }),
 
@@ -75,4 +93,5 @@ export const useChatStore = create<ChatStore>((set) => ({
   })),
 
   clearMessages: () => set({ messages: [] }),
+  setReplyingToMessage: (message) => set({ replyingToMessage: message }),
 }));

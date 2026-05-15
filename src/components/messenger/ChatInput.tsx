@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useCallback } from 'react';
-import { PlusCircle, Image, Sticker, Smile, Send, ThumbsUp } from 'lucide-react';
+import { PlusCircle, Image, Sticker, Smile, Send, ThumbsUp, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { chatService } from '@/services/chatService';
@@ -20,6 +20,8 @@ export default function ChatInput({ currentUser, activeConversationId, isFriend 
   const [inputText, setInputText] = useState('');
   const addMessage = useChatStore((state) => state.addMessage);
   const updateMessage = useChatStore((state) => state.updateMessage);
+  const replyingToMessage = useChatStore((state) => state.replyingToMessage);
+  const setReplyingToMessage = useChatStore((state) => state.setReplyingToMessage);
   
   const { sendTypingStatus } = useChatRealtime(activeConversationId);
 
@@ -32,19 +34,25 @@ export default function ChatInput({ currentUser, activeConversationId, isFriend 
   );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputText(e.target.value);
-    if (e.target.value.trim()) {
+    const val = e.target.value;
+    setInputText(val);
+    if (val.trim()) {
       debouncedTyping(true);
     }
   };
 
+  const isOverLimit = inputText.length > 5000;
+
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const text = inputText.trim();
-    if (!text) return;
+    if (!text || isOverLimit) return;
 
     setInputText('');
     debouncedTyping(false);
+    
+    const replyToId = replyingToMessage?.id;
+    setReplyingToMessage(null);
 
     // 1. Optimistic UI: Thêm tin nhắn tạm thời vào store
     const tempId = `temp-${Date.now()}`;
@@ -60,7 +68,10 @@ export default function ChatInput({ currentUser, activeConversationId, isFriend 
       delivered_at: null,
       file_url: null,
       type: 'text' as const,
-      call_duration: null
+      call_duration: null,
+      is_deleted: false,
+      metadata: null,
+      reply_to_id: replyToId || null
     };
 
     addMessage(tempMessage);
@@ -84,7 +95,7 @@ export default function ChatInput({ currentUser, activeConversationId, isFriend 
       newConvData = newConv;
     }
 
-    const { data, error } = await chatService.sendMessage(text, finalConvId, currentUser.id);
+    const { data, error } = await chatService.sendMessage(text, finalConvId, currentUser.id, replyToId);
 
     if (error) {
       console.error('Failed to send message:', error);
@@ -101,7 +112,20 @@ export default function ChatInput({ currentUser, activeConversationId, isFriend 
   };
 
   return (
-    <footer className="p-6 pt-2 bg-white dark:bg-black">
+    <footer className="p-6 pt-2 bg-white dark:bg-black flex flex-col">
+      {replyingToMessage && (
+        <div className="flex items-center justify-between bg-black/5 dark:bg-white/10 px-4 py-2 rounded-t-2xl mb-1 text-[13px]">
+          <div className="flex flex-col">
+            <span className="font-semibold text-[#004db0]">Đang trả lời</span>
+            <span className="text-gray-500 truncate max-w-[200px] md:max-w-[400px]">
+              {replyingToMessage.is_deleted ? 'Tin nhắn đã bị thu hồi' : replyingToMessage.text}
+            </span>
+          </div>
+          <button onClick={() => setReplyingToMessage(null)} className="p-1 hover:bg-black/10 dark:hover:bg-white/20 rounded-full transition-colors">
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+      )}
       <form onSubmit={handleSendMessage} className="flex items-center gap-3">
           <div className="flex gap-1">
             {[PlusCircle, Image, Sticker].map((Icon, i) => (
@@ -111,21 +135,27 @@ export default function ChatInput({ currentUser, activeConversationId, isFriend 
             ))}
           </div>
           
-          <div className="relative flex-1 group">
+          <div className="relative flex-1 group flex flex-col">
             <Input 
               placeholder="Aa" 
               value={inputText}
               onChange={handleChange}
-              className="bg-[#f3f3f7] dark:bg-[#1c1c1d] border-none rounded-[20px] h-11 focus-visible:ring-2 focus-visible:ring-[#004db0]/10 pr-12 text-[15px] transition-all"
+              className={`bg-[#f3f3f7] dark:bg-[#1c1c1d] border-none rounded-[20px] h-11 focus-visible:ring-2 focus-visible:ring-[#004db0]/10 pr-12 text-[15px] transition-all ${isOverLimit ? 'ring-2 ring-red-500' : ''}`}
             />
             <Smile className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#004db0] cursor-pointer hover:scale-110 transition-transform opacity-70 group-hover:opacity-100" />
+            {isOverLimit && (
+              <span className="text-[11px] text-red-500 font-bold mt-1 ml-2">
+                Tin nhắn quá dài ({inputText.length}/5000)
+              </span>
+            )}
           </div>
 
           <Button 
             type="submit"
             variant="ghost" 
             size="icon" 
-            className="text-[#004db0] rounded-full shrink-0 hover:bg-[#004db0]/5 transition-all active:scale-90"
+            disabled={!inputText.trim() || isOverLimit}
+            className="text-[#004db0] rounded-full shrink-0 hover:bg-[#004db0]/5 transition-all active:scale-90 disabled:opacity-30 disabled:grayscale"
           >
             {inputText.trim() ? (
               <Send className="w-6 h-6 fill-current" />

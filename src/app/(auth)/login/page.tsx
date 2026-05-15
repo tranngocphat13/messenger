@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -75,8 +76,14 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-8 pt-8 border-t border-gray-100 dark:border-gray-800 text-center">
-          <p className="text-[13px] text-gray-400">
-            Ứng dụng Messenger dành cho doanh nghiệp
+          <p className="text-[13px] text-gray-500">
+            Chưa có tài khoản?{' '}
+            <Link
+              href="/register"
+              className="text-[#004db0] dark:text-[#5b9cf6] font-semibold hover:underline"
+            >
+              Đăng ký ngay
+            </Link>
           </p>
         </div>
       </div>

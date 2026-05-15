@@ -53,7 +53,8 @@ export const chatService = {
   async sendMessage(
     content: string,
     conversationId: string,
-    senderId: string
+    senderId: string,
+    replyToId?: string
   ): Promise<ChatServiceResponse<Message>> {
     try {
       if (!content.trim()) {
@@ -66,6 +67,7 @@ export const chatService = {
         sender_id: senderId,
         type: 'text',
         is_read: false,
+        reply_to_id: replyToId || null,
       };
 
       const { data, error } = await supabase
@@ -75,7 +77,7 @@ export const chatService = {
         .single();
 
       if (error) {
-        console.error('Error sending message:', error);
+        console.error('Error sending message:', error.message, '| code:', error.code);
         return { data: null, error: error.message };
       }
 
@@ -109,6 +111,58 @@ export const chatService = {
     } catch (err) {
       console.error('Unexpected error in markAsRead:', err);
       return { data: null, error: 'An unexpected error occurred while marking message as read.' };
+    }
+  },
+
+  /**
+   * Đánh dấu toàn bộ tin nhắn trong cuộc hội thoại là đã đọc.
+   * @param conversationId ID của cuộc hội thoại
+   * @param currentUserId ID của người dùng hiện tại
+   */
+  async markConversationAsRead(conversationId: string, currentUserId: string): Promise<ChatServiceResponse<null>> {
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ 
+          is_read: true,
+          read_at: new Date().toISOString()
+        })
+        .eq('conversation_id', conversationId)
+        .neq('sender_id', currentUserId)
+        .or('is_read.eq.false,is_read.is.null');
+
+      if (error) {
+        console.error('Error marking conversation as read:', error);
+        return { data: null, error: error.message };
+      }
+
+      return { data: null, error: null };
+    } catch (err) {
+      console.error('Unexpected error in markConversationAsRead:', err);
+      return { data: null, error: 'An unexpected error occurred while marking conversation as read.' };
+    }
+  },
+
+  /**
+   * Thu hồi tin nhắn (xóa tin nhắn ở cả hai phía)
+   * @param messageId ID của tin nhắn
+   */
+  async unsendMessage(messageId: string): Promise<ChatServiceResponse<null>> {
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ is_deleted: true })
+        .eq('id', messageId);
+
+      if (error) {
+        console.error('Error unsending message:', error);
+        return { data: null, error: error.message };
+      }
+
+      return { data: null, error: null };
+    } catch (err) {
+      console.error('Unexpected error in unsendMessage:', err);
+      return { data: null, error: 'An unexpected error occurred while unsending message.' };
     }
   }
 };

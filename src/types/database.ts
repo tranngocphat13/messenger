@@ -116,6 +116,9 @@ export type Database = {
           sender_id: string | null
           text: string
           type: Database["public"]["Enums"]["message_type"] | null
+          is_deleted: boolean | null
+          metadata: Json | null
+          reply_to_id: string | null
         }
         Insert: {
           call_duration?: number | null
@@ -129,6 +132,9 @@ export type Database = {
           sender_id?: string | null
           text: string
           type?: Database["public"]["Enums"]["message_type"] | null
+          is_deleted?: boolean | null
+          metadata?: Json | null
+          reply_to_id?: string | null
         }
         Update: {
           call_duration?: number | null
@@ -142,6 +148,9 @@ export type Database = {
           sender_id?: string | null
           text?: string
           type?: Database["public"]["Enums"]["message_type"] | null
+          is_deleted?: boolean | null
+          metadata?: Json | null
+          reply_to_id?: string | null
         }
         Relationships: [
           {
@@ -149,6 +158,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
         ]

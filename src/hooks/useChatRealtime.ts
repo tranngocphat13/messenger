@@ -9,6 +9,7 @@ import { ExtendedMessage } from '@/store/useChatStore';
  */
 export const useChatRealtime = (conversationId: string | null) => {
   const addMessage = useChatStore((state) => state.addMessage);
+  const updateMessage = useChatStore((state) => state.updateMessage);
   const addTypingUser = useChatStore((state) => state.addTypingUser);
   const removeTypingUser = useChatStore((state) => state.removeTypingUser);
   const setTypingUsers = useChatStore((state) => state.setTypingUsers);
@@ -55,6 +56,20 @@ export const useChatRealtime = (conversationId: string | null) => {
           console.log('Realtime message received:', payload);
           const newMessage = payload.new as ExtendedMessage;
           addMessage({ ...newMessage, status: 'sent' });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          console.log('Realtime message updated:', payload);
+          const updatedMessage = payload.new as ExtendedMessage;
+          updateMessage(updatedMessage.id, updatedMessage);
         }
       )
       // 2. Lắng nghe sự kiện typing (Broadcast)
